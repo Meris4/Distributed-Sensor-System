@@ -1,8 +1,10 @@
-﻿namespace IngestionService.Services.Impl
+﻿using System.Collections.Concurrent;
+
+namespace IngestionService.Services.Impl
 {
     public class SensorActivityTracker
     {
-        private readonly Dictionary<string, DateTime> _lastSeenBySensor = new();
+        private readonly ConcurrentDictionary<string, DateTime> _lastSeenBySensor = new();
 
         public void MarkMessageReceived(string sensorId, DateTime timestampUtc)
         {

@@ -1,6 +1,8 @@
 ﻿using System.Net.Http.Json;
 using SensorSimulator;
 using Shared.Contracts;
+using System.Security.Cryptography;
+using Shared.Security;
 
 var httpClient = new HttpClient
 {
@@ -66,6 +68,9 @@ var messageIds = sensors.ToDictionary(x => x.SensorId, _ => 0L);
 
 var blockedUntil = new Dictionary<string, DateTime>();
 
+var privateKeyPath = Path.Combine(AppContext.BaseDirectory, "keys", "sensor-private.pem");
+using var privateKey = RsaKeyLoader.LoadPrivateKey(privateKeyPath);
+
 _ = Task.Run(() =>
 {
     while (true)
@@ -114,8 +119,9 @@ while (true)
             AlarmPriority = alarmPriority,
             TimestampUtc = DateTime.UtcNow,
             MessageId = ++messageIds[sensor.SensorId],
-            Signature = "temporary-signature"
+            Signature = string.Empty
         };
+        request.Signature = SignatureHelper.Sign(request, privateKey);
 
         try
         {
@@ -136,6 +142,7 @@ while (true)
             Console.WriteLine($"Failed to send data: {ex.Message}");
         }
     }
+    Console.WriteLine();
 
     await Task.Delay(TimeSpan.FromSeconds(random.Next(1, 11)));
 }

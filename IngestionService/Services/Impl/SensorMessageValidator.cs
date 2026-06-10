@@ -1,11 +1,16 @@
-﻿using Shared.Contracts;
+﻿using System.Collections.Concurrent;
+using Shared.Contracts;
+using System.Security.Cryptography;
+using Shared.Security;
 
 namespace IngestionService.Services.Impl
 {
     public class SensorMessageValidator : ISensorMessageValidator
     {
-        private readonly Dictionary<string, long> _lastMessageIds = new();
-        private readonly Dictionary<string, List<DateTime>> _messageTimes = new();
+        private readonly ConcurrentDictionary<string, long> _lastMessageIds = new();
+        private readonly ConcurrentDictionary<string, List<DateTime>> _messageTimes = new();
+
+        private readonly RSA _publicKey;
 
         public string? Validate(SensorReadingRequest request)
         {
@@ -23,6 +28,12 @@ namespace IngestionService.Services.Impl
             if (IsRateLimited(request.SensorId))
                 return "Sensor is sending too many messages.";
 
+            if (string.IsNullOrWhiteSpace(request.Signature))
+                return "Signature is required.";
+
+            if (!SignatureHelper.Verify(request, _publicKey))
+                return "Invalid signature.";
+
             _lastMessageIds[request.SensorId] = request.MessageId;
 
             return null;
@@ -39,6 +50,13 @@ namespace IngestionService.Services.Impl
             _messageTimes[sensorId].Add(now);
 
             return _messageTimes[sensorId].Count > 10;
+        }
+
+        public SensorMessageValidator()
+        {
+            var publicKeyPath = Path.Combine(AppContext.BaseDirectory, "keys", "sensor-public.pem");
+
+            _publicKey = RsaKeyLoader.LoadPublicKey(publicKeyPath);
         }
     }
 }
