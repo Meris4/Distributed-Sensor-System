@@ -1,4 +1,5 @@
 ﻿using IngestionService.Services;
+using IngestionService.Services.Impl;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
 
@@ -8,18 +9,21 @@ namespace IngestionService.Controllers
     [Route("api/ingest")]
     public class IngestionController : ControllerBase
     {
-        private readonly SensorMessageValidator _validator;
+        private readonly ISensorMessageValidator _validator;
         private readonly ISensorReadingWriter _sensorReadingWriter;
         private readonly IAlarmNotifier _alarmNotifier;
+        private readonly SensorActivityTracker _activityTracker;
 
         public IngestionController(
-        SensorMessageValidator validator,
+        ISensorMessageValidator validator,
         ISensorReadingWriter sensorReadingWriter,
-        IAlarmNotifier alarmNotifier)
+        IAlarmNotifier alarmNotifier,
+        SensorActivityTracker activityTracker)
         {
             _validator = validator;
             _sensorReadingWriter = sensorReadingWriter;
             _alarmNotifier = alarmNotifier;
+            _activityTracker = activityTracker;
         }
 
         [HttpPost]
@@ -29,6 +33,8 @@ namespace IngestionService.Controllers
 
             if (validationError is not null)
                 return BadRequest(validationError);
+
+            _activityTracker.MarkMessageReceived(request.SensorId, request.TimestampUtc);
 
             Console.ForegroundColor = GetColor(request.AlarmPriority);
             Console.WriteLine(
@@ -54,3 +60,4 @@ namespace IngestionService.Controllers
             };
         }
     }
+}

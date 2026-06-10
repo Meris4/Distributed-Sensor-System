@@ -11,8 +11,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<ISensorMessageValidator, SensorMessageValidator>();
+builder.Services.AddSingleton<SensorActivityTracker>();
 builder.Services.AddScoped<ISensorReadingWriter, SensorReadingWriter>();
 builder.Services.AddScoped<IAlarmNotifier, AlarmNotifier>();
+
 
 var app = builder.Build();
 

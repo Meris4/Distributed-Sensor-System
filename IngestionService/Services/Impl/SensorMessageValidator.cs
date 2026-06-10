@@ -1,6 +1,6 @@
 ﻿using Shared.Contracts;
 
-namespace IngestionService.Services
+namespace IngestionService.Services.Impl
 {
     public class SensorMessageValidator : ISensorMessageValidator
     {
