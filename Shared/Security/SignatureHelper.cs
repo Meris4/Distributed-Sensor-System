@@ -15,9 +15,9 @@ namespace Shared.Security
         {
             return string.Join("|",
                 request.SensorId,
-                request.Temperature.ToString("F4", CultureInfo.InvariantCulture),
-                request.Quality,
-                request.AlarmPriority,
+                request.EncryptedPayload,
+                request.EncryptedKey,
+                request.Iv,
                 request.TimestampUtc.ToUniversalTime().ToString("O"),
                 request.MessageId);
         }
