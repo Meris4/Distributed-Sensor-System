@@ -13,7 +13,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<ISensorMessageValidator, SensorMessageValidator>();
 builder.Services.AddSingleton<SensorActivityTracker>();
 builder.Services.AddScoped<ISensorReadingWriter, SensorReadingWriter>();
-builder.Services.AddScoped<IAlarmNotifier, AlarmNotifier>();
+
+builder.Services.AddHttpClient<IAlarmNotifier, AlarmNotifier>(client =>
+{
+    var url = Environment.GetEnvironmentVariable("NotificationServiceUrl") 
+    ?? "http://localhost:5174";
+    client.BaseAddress = new Uri(url);
+});
 
 
 var app = builder.Build();

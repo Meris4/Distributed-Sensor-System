@@ -15,10 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\keys\sensor-public.pem">
-	  <Link>keys\sensor-public.pem</Link>
-	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</None>
+    <None Include="..\keys\public\**\*.pem">
+      <Link>keys\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\keys\private\server-private.pem">
+      <Link>keys\private\server-private.pem</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

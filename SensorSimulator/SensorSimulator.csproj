@@ -12,10 +12,14 @@
   </ItemGroup>
 
   <ItemGroup>
-	<None Include="..\keys\sensor-private.pem">
-	  <Link>keys\sensor-private.pem</Link>
+    <None Include="..\keys\private\sensor-*-private.pem">
+      <Link>keys\private\%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</None>
+    </None>
+    <None Include="..\keys\public\server-public.pem">
+      <Link>keys\public\server-public.pem</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

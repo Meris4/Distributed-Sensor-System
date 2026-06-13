@@ -1,150 +1,138 @@
 ﻿using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text.Json;
 using SensorSimulator;
 using Shared.Contracts;
-using System.Security.Cryptography;
 using Shared.Security;
 
+var serverUrl = Environment.GetEnvironmentVariable("ServerUrl") ?? "http://localhost:5019";
 var httpClient = new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5019")
+    BaseAddress = new Uri(serverUrl)
 };
 
 var sensors = new List<SensorConfig>
 {
-    new()
-    {
-        SensorId = "SENSOR-001",
-        MinTemperature = 20,
-        MaxTemperature = 120,
-        Quality = DataQuality.GOOD,
-        AlarmLimitPriority1 = 60,
-        AlarmLimitPriority2 = 80,
-        AlarmLimitPriority3 = 100
-    },
-    new()
-    {
-        SensorId = "SENSOR-002",
-        MinTemperature = 20,
-        MaxTemperature = 120,
-        Quality = DataQuality.GOOD,
-        AlarmLimitPriority1 = 60,
-        AlarmLimitPriority2 = 80,
-        AlarmLimitPriority3 = 100
-    },
-    new()
-    {
-        SensorId = "SENSOR-003",
-        MinTemperature = 20,
-        MaxTemperature = 120,
-        Quality = DataQuality.GOOD,
-        AlarmLimitPriority1 = 60,
-        AlarmLimitPriority2 = 80,
-        AlarmLimitPriority3 = 100
-    },
-    new()
-    {
-        SensorId = "SENSOR-004",
-        MinTemperature = 20,
-        MaxTemperature = 120,
-        Quality = DataQuality.GOOD,
-        AlarmLimitPriority1 = 60,
-        AlarmLimitPriority2 = 80,
-        AlarmLimitPriority3 = 100
-    },
-    new()
-    {
-        SensorId = "SENSOR-005",
-        MinTemperature = 20,
-        MaxTemperature = 120,
-        Quality = DataQuality.GOOD,
-        AlarmLimitPriority1 = 60,
-        AlarmLimitPriority2 = 80,
-        AlarmLimitPriority3 = 100
-    }
+    new() { SensorId = "1", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+    new() { SensorId = "2", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+    new() { SensorId = "3", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+    new() { SensorId = "4", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+    new() { SensorId = "5", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 }
 };
 
 var random = new Random();
 var messageIds = sensors.ToDictionary(x => x.SensorId, _ => 0L);
-
 var blockedUntil = new Dictionary<string, DateTime>();
 
-var privateKeyPath = Path.Combine(AppContext.BaseDirectory, "keys", "sensor-private.pem");
-using var privateKey = RsaKeyLoader.LoadPrivateKey(privateKeyPath);
+var keysDir = Path.Combine(AppContext.BaseDirectory, "keys");
 
-_ = Task.Run(() =>
+var privateKeys = new Dictionary<string, RSA>();
+foreach (var sensor in sensors)
 {
-    while (true)
-    {
-        Console.WriteLine("Enter sensor ID to block for 30 seconds, for example SENSOR-001:");
+    var path = Path.Combine(keysDir, "private", $"sensor-{sensor.SensorId}-private.pem");
+    privateKeys[sensor.SensorId] = RsaKeyLoader.LoadPrivateKey(path);
+}
 
-        var sensorId = Console.ReadLine();
-
-        if (string.IsNullOrWhiteSpace(sensorId))
-            continue;
-
-        if (!sensors.Any(x => x.SensorId == sensorId))
-        {
-            Console.WriteLine($"Sensor {sensorId} does not exist.");
-            continue;
-        }
-
-        blockedUntil[sensorId] = DateTime.UtcNow.AddSeconds(30);
-        Console.WriteLine($"Sensor {sensorId} blocked for 30 seconds.");
-    }
-});
+using var serverPublicKey = RsaKeyLoader.LoadPublicKey(
+    Path.Combine(keysDir, "public", "server-public.pem"));
 
 while (true)
 {
     foreach (var sensor in sensors)
     {
-        if (blockedUntil.TryGetValue(sensor.SensorId, out var until) && until > DateTime.UtcNow)
+        if (IsBlocked(sensor.SensorId))
         {
             Console.WriteLine($"{sensor.SensorId} is temporarily blocked.");
             continue;
         }
 
-        var temperature = GenerateTemperature(sensor, random);
-        var alarmPriority = CalculateAlarmPriority(sensor, temperature);
+        var measurement = Measure(sensor, random);
+        PrintMeasurement(sensor, measurement);
 
-        Console.ForegroundColor = GetColor(alarmPriority);
-        Console.WriteLine(
-            $"[{DateTime.UtcNow:O}] {sensor.SensorId} measured {temperature:F2} C, alarm priority {alarmPriority}");
-        Console.ResetColor();
+        var request = BuildSignedRequest(sensor, measurement, serverPublicKey, privateKeys[sensor.SensorId], messageIds);
+        await SendRequest(httpClient, request);
+    }
 
-        var request = new SensorReadingRequest
+    Console.WriteLine();
+    await Task.Delay(TimeSpan.FromSeconds(random.Next(1, 11)));
+}
+
+SensorReadingRequest BuildSignedRequest(
+    SensorConfig sensor,
+    Measurement m,
+    RSA serverPublicKey,
+    RSA sensorPrivateKey,
+    Dictionary<string, long> messageIds)
+{
+    var encrypted = EncryptPayload(sensor, m, serverPublicKey);
+
+    var request = new SensorReadingRequest
+    {
+        SensorId = sensor.SensorId,
+        TimestampUtc = DateTime.UtcNow,
+        MessageId = ++messageIds[sensor.SensorId],
+        EncryptedPayload = encrypted.Payload,
+        EncryptedKey = encrypted.Key,
+        Iv = encrypted.Iv,
+        Signature = string.Empty
+    };
+
+    request.Signature = SignatureHelper.Sign(request, sensorPrivateKey);
+    return request;
+}
+
+EncryptedMessage EncryptPayload(SensorConfig sensor, Measurement m, RSA serverPublicKey)
+{
+    var payload = new SensorReadingPayload
+    {
+        Temperature = m.Temperature,
+        Quality = sensor.Quality,
+        AlarmPriority = m.AlarmPriority
+    };
+    var payloadJson = JsonSerializer.Serialize(payload);
+
+    var (aesKey, iv) = AesHelper.GenerateKeyAndIv();
+    var encryptedPayload = AesHelper.Encrypt(payloadJson, aesKey, iv);
+    var encryptedKey = RsaHelper.EncryptAesKey(aesKey, serverPublicKey);
+
+    return new EncryptedMessage(encryptedPayload, encryptedKey, Convert.ToBase64String(iv));
+}
+
+async Task SendRequest(HttpClient httpClient, SensorReadingRequest request)
+{
+    try
+    {
+        var response = await httpClient.PostAsJsonAsync("/api/ingest", request);
+
+        if (response.IsSuccessStatusCode)
+            Console.WriteLine($"Server response: {(int)response.StatusCode} OK");
+        else
         {
-            SensorId = sensor.SensorId,
-            Temperature = temperature,
-            Quality = sensor.Quality,
-            AlarmPriority = alarmPriority,
-            TimestampUtc = DateTime.UtcNow,
-            MessageId = ++messageIds[sensor.SensorId],
-            Signature = string.Empty
-        };
-        request.Signature = SignatureHelper.Sign(request, privateKey);
-
-        try
-        {
-            var response = await httpClient.PostAsJsonAsync("/api/ingest", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Console.WriteLine($"Server response: {(int)response.StatusCode} OK");
-            }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Server response: {(int)response.StatusCode} - {error}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to send data: {ex.Message}");
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Server response: {(int)response.StatusCode} - {error}");
         }
     }
-    Console.WriteLine();
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Failed to send data: {ex.Message}");
+    }
+}
 
-    await Task.Delay(TimeSpan.FromSeconds(random.Next(1, 11)));
+bool IsBlocked(string sensorId)
+    => blockedUntil.TryGetValue(sensorId, out var until) && until > DateTime.UtcNow;
+
+Measurement Measure(SensorConfig sensor, Random random)
+{
+    var temperature = GenerateTemperature(sensor, random);
+    var alarmPriority = CalculateAlarmPriority(sensor, temperature);
+    return new Measurement(temperature, alarmPriority);
+}
+
+void PrintMeasurement(SensorConfig sensor, Measurement m)
+{
+    Console.ForegroundColor = GetColor(m.AlarmPriority);
+    Console.WriteLine($"[{DateTime.UtcNow:O}] {sensor.SensorId} measured {m.Temperature:F2} C, alarm priority {m.AlarmPriority}");
+    Console.ResetColor();
 }
 
 static double GenerateTemperature(SensorConfig sensor, Random random)
@@ -177,3 +165,6 @@ static ConsoleColor GetColor(int priority)
         _ => ConsoleColor.Gray
     };
 }
+
+record Measurement(double Temperature, int AlarmPriority);
+record EncryptedMessage(string Payload, string Key, string Iv);
