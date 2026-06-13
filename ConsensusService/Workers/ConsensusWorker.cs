@@ -1,14 +1,13 @@
-﻿using ConsensusService.Services;
-using ConsensusService.Data;
+﻿using ConsensusService.Data;
 using ConsensusService.Models;
 
-namespace ConsensusService.Workers
+namespace ConsensusService.Services.Impl
 {
-    public class ConsensusWorker : BackgroundService
+    public class ConsensusBackgroundWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public ConsensusWorker(IServiceScopeFactory scopeFactory)
+        public ConsensusBackgroundWorker(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
         }
@@ -17,18 +16,20 @@ namespace ConsensusService.Workers
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+
                 using var scope = _scopeFactory.CreateScope();
 
-                var detector = scope.ServiceProvider.GetRequiredService<IMaliciousSensorDetector>();
-                var consensus = scope.ServiceProvider.GetRequiredService<IConsensusCalculationService>();
                 var db = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
+                var consensusService = scope.ServiceProvider.GetRequiredService<IConsensusCalculationService>();
+                var detector = scope.ServiceProvider.GetRequiredService<IMaliciousSensorDetector>();
 
                 await detector.EvaluateAsync();
 
                 var end = DateTime.UtcNow;
                 var start = end.AddMinutes(-1);
 
-                var value = await consensus.CalculateConsensusAsync(start, end);
+                var value = await consensusService.CalculateConsensusAsync(start, end);
 
                 if (value != null)
                 {
@@ -43,8 +44,6 @@ namespace ConsensusService.Workers
 
                     await db.SaveChangesAsync();
                 }
-
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
     }

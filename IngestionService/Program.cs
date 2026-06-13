@@ -1,5 +1,7 @@
+using IngestionService.Data;
 using IngestionService.Services;
 using IngestionService.Services.Impl;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<ISensorMessageValidator, SensorMessageValidator>();
 builder.Services.AddSingleton<SensorActivityTracker>();
 builder.Services.AddScoped<ISensorReadingWriter, SensorReadingWriter>();
+builder.Services.AddDbContext<IngestionDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddHttpClient<IAlarmNotifier, AlarmNotifier>(client =>
 {

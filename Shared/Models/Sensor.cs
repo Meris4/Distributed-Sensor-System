@@ -1,19 +1,19 @@
-﻿namespace ConsensusService.Models
-{
-    public enum SensorQuality
-    {
-        GOOD,
-        BAD,
-        UNCERTAIN
-    }
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Shared.Contracts;
 
+namespace Shared.Models
+{
     public class Sensor
     {
-        public Guid Id { get; set; }
+        public string Id { get; set; }
 
         public string Name { get; set; } = string.Empty;
 
-        public SensorQuality Quality { get; set; } = SensorQuality.GOOD;
+        public DataQuality Quality { get; set; } = DataQuality.GOOD;
 
         public DateTime LastSeen { get; set; }
 

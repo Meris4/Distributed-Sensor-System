@@ -2,7 +2,7 @@
 {
     public class SensorDataDto
     {
-        public Guid SensorId { get; set; }
+        public string SensorId { get; set; }
 
         public double Temperature { get; set; }
 

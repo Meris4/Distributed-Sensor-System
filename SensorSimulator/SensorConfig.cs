@@ -10,7 +10,7 @@ namespace SensorSimulator
 {
     public class SensorConfig
     {
-        public string SensorId { get; set; } = string.Empty;
+        public string SensorId { get; set; }
         public double MinTemperature { get; set; }
         public double MaxTemperature { get; set; }
         public DataQuality Quality { get; set; }
