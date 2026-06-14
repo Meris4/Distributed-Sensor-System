@@ -13,14 +13,27 @@ var httpClient = new HttpClient
     BaseAddress = new Uri(serverUrl)
 };
 
-var sensors = new List<SensorConfig>
-{
-    new() { SensorId = "1", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
-    new() { SensorId = "2", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
-    new() { SensorId = "3", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
-    new() { SensorId = "4", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
-    new() { SensorId = "5", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 }
-};
+//var sensors = new List<SensorConfig>
+//{
+//    new() { SensorId = "1", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+//    new() { SensorId = "2", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+//    new() { SensorId = "3", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+//    new() { SensorId = "4", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 },
+//    new() { SensorId = "5", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 }
+//};
+
+var sensors = Enumerable.Range(1, 10)
+    .Select(i => new SensorConfig
+    {
+        SensorId = i.ToString(),
+        MinTemperature = 20,
+        MaxTemperature = 120,
+        Quality = DataQuality.GOOD,
+        AlarmLimitPriority1 = 60,
+        AlarmLimitPriority2 = 80,
+        AlarmLimitPriority3 = 100
+    })
+    .ToList();
 
 var activeSensors = sensors.Take(5)
                            .Select(x => x.SensorId)
@@ -138,8 +151,20 @@ async Task SendRequest(HttpClient httpClient, SensorReadingRequest request)
     {
         var response = await httpClient.PostAsJsonAsync("/api/ingest", request);
 
-        if (response.IsSuccessStatusCode)
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            Console.WriteLine($"Sensor {request.SensorId} BLOCKED ");
+
+            activeSensors.Remove(request.SensorId);
+
+            blockedUntil[request.SensorId] = DateTime.UtcNow.AddSeconds(30);
+
+            Rebalance();
+        }
+        else if (response.IsSuccessStatusCode)
+        {
             Console.WriteLine($"Server response: {(int)response.StatusCode} OK");
+        }
         else
         {
             var error = await response.Content.ReadAsStringAsync();
@@ -149,6 +174,20 @@ async Task SendRequest(HttpClient httpClient, SensorReadingRequest request)
     catch (Exception ex)
     {
         Console.WriteLine($"Failed to send data: {ex.Message}");
+    }
+}
+
+void Rebalance()
+{
+    activeSensors.RemoveWhere(id => IsBlocked(id));
+
+    while (activeSensors.Count < 5)
+    {
+        var replacement = GetReplacementSensor();
+        if (replacement == null)
+            break;
+
+        activeSensors.Add(replacement);
     }
 }
 

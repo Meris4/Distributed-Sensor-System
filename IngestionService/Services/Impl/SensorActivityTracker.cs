@@ -34,5 +34,10 @@ namespace IngestionService.Services.Impl
 
             return DateTime.UtcNow - lastSeen > TimeSpan.FromSeconds(10);
         }
+
+        public void RegisterSensor(string sensorId)
+        {
+            _lastSeenBySensor.TryAdd(sensorId, DateTime.UtcNow);
+        }
     }
 }
