@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SensorSimulator;
 using Shared.Contracts;
+using Shared.Models;
 using Shared.Security;
 
 var serverUrl = Environment.GetEnvironmentVariable("ServerUrl") ?? "http://localhost:5019";
@@ -20,6 +21,9 @@ var sensors = new List<SensorConfig>
     new() { SensorId = "5", MinTemperature = 20, MaxTemperature = 120, Quality = DataQuality.GOOD, AlarmLimitPriority1 = 60, AlarmLimitPriority2 = 80, AlarmLimitPriority3 = 100 }
 };
 
+var activeSensors = sensors.Take(5)
+                           .Select(x => x.SensorId)
+                           .ToHashSet();
 var random = new Random();
 var messageIds = sensors.ToDictionary(x => x.SensorId, _ => 0L);
 var blockedUntil = new Dictionary<string, DateTime>();
@@ -38,8 +42,22 @@ using var serverPublicKey = RsaKeyLoader.LoadPublicKey(
 
 while (true)
 {
+    activeSensors.RemoveWhere(id => IsBlocked(id));
+
+    while (activeSensors.Count < 5)
+    {
+        var replacement = GetReplacementSensor();
+        if (replacement == null)
+            break;
+
+        activeSensors.Add(replacement);
+    }
+
     foreach (var sensor in sensors)
     {
+        if (!activeSensors.Contains(sensor.SensorId))
+            continue;
+
         if (IsBlocked(sensor.SensorId))
         {
             Console.WriteLine($"{sensor.SensorId} is temporarily blocked.");
@@ -49,12 +67,27 @@ while (true)
         var measurement = Measure(sensor, random);
         PrintMeasurement(sensor, measurement);
 
-        var request = BuildSignedRequest(sensor, measurement, serverPublicKey, privateKeys[sensor.SensorId], messageIds);
+        var request = BuildSignedRequest(
+            sensor,
+            measurement,
+            serverPublicKey,
+            privateKeys[sensor.SensorId],
+            messageIds);
+
         await SendRequest(httpClient, request);
     }
 
     Console.WriteLine();
     await Task.Delay(TimeSpan.FromSeconds(random.Next(1, 11)));
+}
+
+string? GetReplacementSensor()
+{
+    return sensors
+        .Select(s => s.SensorId)
+        .FirstOrDefault(id =>
+            !activeSensors.Contains(id) &&
+            !IsBlocked(id));
 }
 
 SensorReadingRequest BuildSignedRequest(

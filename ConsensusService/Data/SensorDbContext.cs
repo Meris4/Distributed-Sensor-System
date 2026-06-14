@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Shared.Models;
 using ConsensusService.Models;
 
 namespace ConsensusService.Data

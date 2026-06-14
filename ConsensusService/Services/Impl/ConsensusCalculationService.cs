@@ -1,5 +1,5 @@
 ﻿using ConsensusService.Data;
-using ConsensusService.Models;
+using Shared.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConsensusService.Services.Impl
@@ -13,14 +13,17 @@ namespace ConsensusService.Services.Impl
             _db = db;
         }
 
-        public async Task<double?> CalculateConsensusAsync(DateTime start, DateTime end)
+        public async Task<double?> CalculateConsensusAsync(
+        DateTime start,
+        DateTime end)
         {
             var values = await _db.Measurements
                 .Include(x => x.Sensor)
                 .Where(x =>
                     x.Timestamp >= start &&
-                    x.Timestamp <= end &&
-                    x.Sensor.Quality == SensorQuality.GOOD)
+                    x.Timestamp < end &&
+                    x.Sensor.Quality == DataQuality.GOOD &&
+                    x.Sensor.IsActive)
                 .Select(x => x.Temperature)
                 .ToListAsync();
 
@@ -29,7 +32,7 @@ namespace ConsensusService.Services.Impl
 
             values.Sort();
 
-            return values[values.Count / 2]; // median (BFT simplification)
+            return values[values.Count / 2];
         }
     }
 }

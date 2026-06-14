@@ -4,7 +4,7 @@ namespace Shared.Contracts
 {
     public class SensorReadingRequest
     {
-        public string SensorId { get; set; } = string.Empty;
+        public string SensorId { get; set; }
         public DateTime TimestampUtc { get; set; }
         public long MessageId { get; set; }
 
