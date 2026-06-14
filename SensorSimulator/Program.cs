@@ -6,7 +6,8 @@ using Shared.Contracts;
 using Shared.Models;
 using Shared.Security;
 
-var serverUrl = Environment.GetEnvironmentVariable("ServerUrl") ?? "http://localhost:5019";
+var serverUrl = Environment.GetEnvironmentVariable("ServerUrl") 
+    ?? "http://localhost:5142"; // Localhost ingress port as fallback when run locally without docker
 var httpClient = new HttpClient
 {
     BaseAddress = new Uri(serverUrl)
