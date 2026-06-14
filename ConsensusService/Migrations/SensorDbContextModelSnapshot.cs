@@ -45,11 +45,10 @@ namespace ConsensusService.Migrations
                     b.ToTable("ConsensusValues");
                 });
 
-            modelBuilder.Entity("ConsensusService.Models.Sensor", b =>
+            modelBuilder.Entity("Shared.Models.Sensor", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -69,7 +68,7 @@ namespace ConsensusService.Migrations
                     b.ToTable("Sensors");
                 });
 
-            modelBuilder.Entity("ConsensusService.Models.SensorMeasurement", b =>
+            modelBuilder.Entity("Shared.Models.SensorMeasurement", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -78,11 +77,9 @@ namespace ConsensusService.Migrations
                     b.Property<int>("AlarmPriority")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsConsensusValue")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("SensorId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("SensorId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<double>("Temperature")
                         .HasColumnType("double precision");
@@ -97,9 +94,9 @@ namespace ConsensusService.Migrations
                     b.ToTable("Measurements");
                 });
 
-            modelBuilder.Entity("ConsensusService.Models.SensorMeasurement", b =>
+            modelBuilder.Entity("Shared.Models.SensorMeasurement", b =>
                 {
-                    b.HasOne("ConsensusService.Models.Sensor", "Sensor")
+                    b.HasOne("Shared.Models.Sensor", "Sensor")
                         .WithMany("Measurements")
                         .HasForeignKey("SensorId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -108,7 +105,7 @@ namespace ConsensusService.Migrations
                     b.Navigation("Sensor");
                 });
 
-            modelBuilder.Entity("ConsensusService.Models.Sensor", b =>
+            modelBuilder.Entity("Shared.Models.Sensor", b =>
                 {
                     b.Navigation("Measurements");
                 });

@@ -1,7 +1,6 @@
 using ConsensusService.Data;
 using ConsensusService.Services;
 using ConsensusService.Services.Impl;
-using ConsensusService.Workers;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +15,7 @@ builder.Services.AddDbContext<SensorDbContext>(options =>
 builder.Services.AddScoped<IConsensusCalculationService, ConsensusCalculationService>();
 builder.Services.AddScoped<IMaliciousSensorDetector, MaliciousSensorDetector>();
 
-builder.Services.AddHostedService<ConsensusWorker>();
+builder.Services.AddHostedService<ConsensusBackgroundWorker>();
 
 var app = builder.Build();
 

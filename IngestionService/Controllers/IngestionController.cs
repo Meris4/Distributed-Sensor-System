@@ -34,7 +34,7 @@ namespace IngestionService.Controllers
             if (validationError is not null)
                 return BadRequest(validationError);
 
-            _activityTracker.MarkMessageReceived(request.SensorId, DateTime.UtcNow);
+            _activityTracker.MarkMessageReceived(request.SensorId.ToString(), DateTime.UtcNow);
 
             Console.ForegroundColor = GetColor(request.AlarmPriority);
             Console.WriteLine(

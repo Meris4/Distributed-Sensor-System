@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ConsensusService.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class ChangeSensorIdToString : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -30,7 +30,7 @@ namespace ConsensusService.Migrations
                 name: "Sensors",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Quality = table.Column<int>(type: "integer", nullable: false),
                     LastSeen = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -46,11 +46,10 @@ namespace ConsensusService.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    SensorId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SensorId = table.Column<string>(type: "text", nullable: false),
                     Temperature = table.Column<double>(type: "double precision", nullable: false),
                     AlarmPriority = table.Column<int>(type: "integer", nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsConsensusValue = table.Column<bool>(type: "boolean", nullable: false)
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
