@@ -29,6 +29,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      consensus-service:
+        condition: service_started
 
   consensus-service:
     build:
@@ -58,9 +60,19 @@ services:
     tty: true
     environment:
       - SensorId=1
-      - ServerUrl=http://ingestion-service:8080
+      - ServerUrl=http://ingress:8080
     depends_on:
       - ingestion-service
+
+  ingress:
+    build:
+      context: .
+      dockerfile: Ingress/Dockerfile
+    ports:
+      - "8000:8080"
+    depends_on:
+      - ingestion-service
+      - notification-service
 
 volumes:
   postgres_data:
