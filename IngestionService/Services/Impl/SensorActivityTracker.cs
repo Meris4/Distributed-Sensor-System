@@ -5,6 +5,17 @@ namespace IngestionService.Services.Impl
     public class SensorActivityTracker
     {
         private readonly ConcurrentDictionary<string, DateTime> _lastSeenBySensor = new();
+        private readonly ConcurrentDictionary<string, DateTime> _blockedUntil = new();
+
+        public void Block(string sensorId, TimeSpan duration)
+        {
+            _blockedUntil[sensorId] = DateTime.UtcNow.Add(duration);
+        }
+
+        public bool IsBlocked(string sensorId)
+        {
+            return _blockedUntil.TryGetValue(sensorId, out var until) && until > DateTime.UtcNow;
+        }
 
         public void MarkMessageReceived(string sensorId, DateTime timestampUtc)
         {

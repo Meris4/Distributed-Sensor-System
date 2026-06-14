@@ -23,6 +23,7 @@ services:
       dockerfile: IngestionService/Dockerfile
     environment:
       - ConnectionStrings__Default=Host=postgres;Port=5432;Database=sensors;Username=postgres;Password=postgres
+      - NotificationServiceUrl=http://notification-service:8080
     ports:
       - "8080:8080"
     depends_on:

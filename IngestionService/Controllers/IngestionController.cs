@@ -29,6 +29,9 @@ namespace IngestionService.Controllers
         [HttpPost]
         public async Task<IActionResult> Ingest([FromBody] SensorReadingRequest request)
         {
+            if (_activityTracker.IsBlocked(request.SensorId))
+                return StatusCode(403, "Sensor is temporarily blocked.");
+
             var validationError = _validator.Validate(request);
 
             if (validationError is not null)

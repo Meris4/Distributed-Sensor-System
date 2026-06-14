@@ -15,6 +15,13 @@ namespace IngestionService.Controllers
             _activityTracker = activityTracker;
         }
 
+        [HttpPost("{id}/block")]
+        public IActionResult Block(string id)
+        {
+            _activityTracker.Block(id, TimeSpan.FromSeconds(30));
+            return Ok($"Sensor {id} blocked for 30 seconds.");
+        }
+
         [HttpGet("activity")]
         public IActionResult GetActivity()
         {
