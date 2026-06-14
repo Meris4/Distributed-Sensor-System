@@ -29,6 +29,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      consensus-service:
+        condition: service_started
 
   consensus-service:
     build:
