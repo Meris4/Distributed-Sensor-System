@@ -23,66 +23,38 @@ namespace ConsensusService.Services.Impl
 
             foreach (var sensor in sensors)
             {
-
+                // timeout
                 if (now - sensor.LastSeen > TimeSpan.FromSeconds(10))
                 {
                     sensor.IsActive = false;
                     continue;
                 }
 
-                sensor.IsActive = true;
-
-                var recentMeasurements = sensor.Measurements
+                var recent = await _db.Measurements
+                    .Where(x => x.SensorId == sensor.Id)
                     .OrderByDescending(x => x.Timestamp)
-                    .Take(3)
-                    .ToList();
+                    .Take(5)
+                    .ToListAsync();
 
-                if (recentMeasurements.Count == 0)
-                    continue;
-
-                var invalidCount = recentMeasurements.Count(x =>
-                    x.Temperature < -100 ||
-                    x.Temperature > 500);
-
-                if (invalidCount == 3)
+                if (recent.Count >= 3)
                 {
-                    sensor.Quality = DataQuality.BAD;
-                    sensor.IsActive = false;
+                    var badRatio = recent.Count(x =>
+                        x.Temperature < 20 || x.Temperature > 120)
+                        / (double)recent.Count;
+
+                    if (badRatio > 0.6)
+                    {
+                        sensor.Quality = DataQuality.BAD;
+                        sensor.IsActive = false;
+                        continue;
+                    }
                 }
-                else
-                {
-                    sensor.Quality = DataQuality.GOOD;
-                }
+
+                sensor.Quality = DataQuality.GOOD;
+                sensor.IsActive = true;
             }
 
-            var activeGood = sensors
-                .Where(s => s.IsActive &&
-                            s.Quality == DataQuality.GOOD)
-                .ToList();
-
-            if (activeGood.Count > 5)
-            {
-                foreach (var sensor in activeGood.Skip(5))
-                {
-                    sensor.IsActive = false;
-                }
-            }
-            else if (activeGood.Count < 5)
-            {
-                var replacements = sensors
-                    .Where(s =>
-                        !s.IsActive &&
-                        s.Quality == DataQuality.GOOD &&
-                        now - s.LastSeen <= TimeSpan.FromSeconds(10))
-                    .Take(5 - activeGood.Count);
-
-                foreach (var sensor in replacements)
-                {
-                    sensor.IsActive = true;
-                }
-            }
-
-            await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
         }
     }
 }

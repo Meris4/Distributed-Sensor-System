@@ -13,9 +13,7 @@ namespace ConsensusService.Services.Impl
             _db = db;
         }
 
-        public async Task<double?> CalculateConsensusAsync(
-        DateTime start,
-        DateTime end)
+        public async Task<double?> CalculateConsensusAsync(DateTime start, DateTime end)
         {
             var values = await _db.Measurements
                 .Include(x => x.Sensor)
@@ -25,14 +23,20 @@ namespace ConsensusService.Services.Impl
                     x.Sensor.Quality == DataQuality.GOOD &&
                     x.Sensor.IsActive)
                 .Select(x => x.Temperature)
+                .OrderBy(x => x)
                 .ToListAsync();
 
-            if (!values.Any())
+            if (values.Count < 3)
                 return null;
 
-            values.Sort();
+            int trim = Math.Max(1, values.Count / 10);
 
-            return values[values.Count / 2];
+            var trimmed = values
+                .Skip(trim)
+                .Take(values.Count - 2 * trim)
+                .ToList();
+
+            return trimmed[trimmed.Count / 2];
         }
     }
 }

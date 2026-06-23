@@ -21,5 +21,11 @@ namespace Shared.Models
 
         public ICollection<SensorMeasurement> Measurements { get; set; }
             = new List<SensorMeasurement>();
+        public DateTime? BlockedUntil { get; set; }
+
+        public void BlockSensor(Sensor sensor)
+        {
+            sensor.BlockedUntil = DateTime.UtcNow.AddSeconds(30);
+        }
     }
 }

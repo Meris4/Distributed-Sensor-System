@@ -19,15 +19,23 @@ namespace IngestionService.Services.Impl
 
             var sensor = await _db.Sensors.FindAsync(sensorId);
 
+            if (sensor != null &&
+                sensor.BlockedUntil != null &&
+                sensor.BlockedUntil > DateTime.UtcNow)
+            {
+                return;
+            }
+
             if (sensor == null)
             {
                 sensor = new Sensor
                 {
                     Id = sensorId,
-                    Name = $"Sensor-{request.SensorId}",
+                    Name = $"Sensor-{sensorId}",
                     LastSeen = DateTime.UtcNow,
                     Quality = DataQuality.GOOD,
-                    IsActive = true
+                    IsActive = true,
+                    BlockedUntil = null
                 };
 
                 _db.Sensors.Add(sensor);
