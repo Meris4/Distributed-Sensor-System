@@ -31,20 +31,5 @@ namespace IngestionService.Controllers
 
             return Ok(result);
         }
-
-        [HttpPost("block/{sensorId}")]
-        public async Task<IActionResult> Block(string sensorId)
-        {
-            var sensor = await _db.Sensors.FindAsync(sensorId);
-
-            if (sensor == null)
-                return NotFound();
-
-            sensor.BlockedUntil = DateTime.UtcNow.AddSeconds(30);
-
-            await _db.SaveChangesAsync();
-
-            return Ok($"Sensor {sensorId} blocked for 30s");
-        }
     }
 }
