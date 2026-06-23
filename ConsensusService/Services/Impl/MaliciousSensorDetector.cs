@@ -15,46 +15,39 @@ namespace ConsensusService.Services.Impl
 
         public async Task EvaluateAsync()
         {
-            var now = DateTime.UtcNow;
+            var oneMinuteAgo = DateTime.UtcNow.AddMinutes(-1);
 
-            var sensors = await _db.Sensors
-                .Include(s => s.Measurements)
+            var recentMeasurements = await _db.Measurements
+                .Where(m => m.Timestamp >= oneMinuteAgo)
                 .ToListAsync();
 
-            foreach (var sensor in sensors)
+            var activeSensors = await _db.Sensors.Where(s => s.IsActive).ToListAsync();
+
+            if (recentMeasurements.Count == 0) return;
+
+            var allTemperatures = recentMeasurements.Select(m => m.Temperature).OrderBy(t => t).ToList();
+            double medianConsensusTemp = allTemperatures[allTemperatures.Count / 2];
+
+            foreach (var sensor in activeSensors)
             {
-                // timeout
-                if (now - sensor.LastSeen > TimeSpan.FromSeconds(10))
+                var sensorReadings = recentMeasurements.Where(m => m.SensorId == sensor.Id).ToList();
+
+                if (sensorReadings.Any())
                 {
-                    sensor.IsActive = false;
-                    continue;
-                }
+                    var sensorAvg = sensorReadings.Average(r => r.Temperature);
 
-                var recent = await _db.Measurements
-                    .Where(x => x.SensorId == sensor.Id)
-                    .OrderByDescending(x => x.Timestamp)
-                    .Take(5)
-                    .ToListAsync();
-
-                if (recent.Count >= 3)
-                {
-                    var badRatio = recent.Count(x =>
-                        x.Temperature < 20 || x.Temperature > 120)
-                        / (double)recent.Count;
-
-                    if (badRatio > 0.6)
+                    if (Math.Abs(sensorAvg - medianConsensusTemp) > 30.0)
                     {
                         sensor.Quality = DataQuality.BAD;
-                        sensor.IsActive = false;
-                        continue;
+                    }
+                    else
+                    {
+                        sensor.Quality = DataQuality.GOOD;
                     }
                 }
-
-                sensor.Quality = DataQuality.GOOD;
-                sensor.IsActive = true;
             }
 
-                await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
         }
     }
 }

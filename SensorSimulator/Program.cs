@@ -26,8 +26,8 @@ var sensors = Enumerable.Range(1, 10)
     .Select(i => new SensorConfig
     {
         SensorId = i.ToString(),
-        MinTemperature = i == 1 ? 120 : 20,
-        MaxTemperature = i == 1 ? 200 : 120,
+        MinTemperature = i == 1 ? 1100 : 20,
+        MaxTemperature = i == 1 ? 1200 : 120,
         Quality = DataQuality.GOOD,
         AlarmLimitPriority1 = 60,
         AlarmLimitPriority2 = 80,
