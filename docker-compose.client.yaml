@@ -1,0 +1,11 @@
+services:
+  sensor-simulator:
+    build:
+      context: .
+      dockerfile: SensorSimulator/Dockerfile
+    stdin_open: true
+    tty: true
+    environment:
+      - SensorId=1
+      - ServerUrl=http://192.168.0.102:8000
+    depends_on: []

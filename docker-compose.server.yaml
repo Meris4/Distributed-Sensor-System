@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sensors-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sensors
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: IngestionService/Dockerfile
+    environment:
+      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=sensors;Username=postgres;Password=postgres
+      - NotificationServiceUrl=http://notification-service:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consensus-service:
+        condition: service_started
+  consensus-service:
+    build:
+      context: .
+      dockerfile: ConsensusService/Dockerfile
+    environment:
+      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=sensors;Username=postgres;Password=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+  notification-service:
+    build:
+      context: .
+      dockerfile: NotificationService/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+  ingress:
+    build:
+      context: .
+      dockerfile: Ingress/Dockerfile
+    ports:
+      - "8000:8080"
+    depends_on:
+      - ingestion-service
+      - notification-service
+volumes:
+  postgres_data:
