@@ -20,7 +20,7 @@
   <div id="status">Connecting...</div>
   <div id="alarms"></div>
   <script>
-    const HUB_URL = "http://192.168.0.102:8080/hubs/alarms";
+    const HUB_URL = "http://192.168.0.102:8000/hubs/alarms";
     const statusEl = document.getElementById("status");
     const alarmsEl = document.getElementById("alarms");
     const connection = new signalR.HubConnectionBuilder()
