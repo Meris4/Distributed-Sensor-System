@@ -39,12 +39,30 @@ namespace ConsensusService.Services.Impl
                     if (Math.Abs(sensorAvg - medianConsensusTemp) > 30.0)
                     {
                         sensor.Quality = DataQuality.BAD;
+                        sensor.IsActive = false;
                     }
                     else
                     {
                         sensor.Quality = DataQuality.GOOD;
+                        sensor.IsActive = true;
                     }
                 }
+            }
+
+            var activeGood = await _db.Sensors
+                .Where(s => s.IsActive && s.Quality == DataQuality.GOOD)
+                .ToListAsync();
+
+            if (activeGood.Count < 5)
+            {
+                var replacements = await _db.Sensors
+                    .Where(s => !s.IsActive && s.Quality == DataQuality.GOOD)
+                    .OrderBy(s => s.LastSeen)
+                    .Take(5 - activeGood.Count)
+                    .ToListAsync();
+
+                foreach (var r in replacements)
+                    r.IsActive = true;
             }
 
             await _db.SaveChangesAsync();

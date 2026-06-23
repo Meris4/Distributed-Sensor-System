@@ -1,4 +1,5 @@
-﻿using IngestionService.Services;
+﻿using IngestionService.Data;
+using IngestionService.Services;
 using IngestionService.Services.Impl;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
@@ -13,17 +14,20 @@ namespace IngestionService.Controllers
         private readonly ISensorReadingWriter _sensorReadingWriter;
         private readonly IAlarmNotifier _alarmNotifier;
         private readonly SensorActivityTracker _activityTracker;
+        private readonly IngestionDbContext _db;
 
         public IngestionController(
         ISensorMessageValidator validator,
         ISensorReadingWriter sensorReadingWriter,
         IAlarmNotifier alarmNotifier,
-        SensorActivityTracker activityTracker)
+        SensorActivityTracker activityTracker,
+        IngestionDbContext db)
         {
             _validator = validator;
             _sensorReadingWriter = sensorReadingWriter;
             _alarmNotifier = alarmNotifier;
             _activityTracker = activityTracker;
+            _db = db;
         }
 
         [HttpPost]
@@ -31,6 +35,14 @@ namespace IngestionService.Controllers
         {
             if (_activityTracker.IsBlocked(request.SensorId))
                 return StatusCode(403, "Sensor is temporarily blocked.");
+
+            var sensor = await _db.Sensors.FindAsync(request.SensorId);
+
+            if (sensor != null)
+            {
+                if (!sensor.IsActive || sensor.Quality == DataQuality.BAD)
+                    return StatusCode(403, "Sensor disabled");
+            }
 
             var validationError = _validator.Validate(request);
 
