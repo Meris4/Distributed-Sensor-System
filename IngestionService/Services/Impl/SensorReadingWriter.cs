@@ -24,7 +24,7 @@ namespace IngestionService.Services.Impl
                 sensor = new Sensor
                 {
                     Id = sensorId,
-                    Name = $"Sensor-{request.SensorId}",
+                    Name = $"Sensor-{sensorId}",
                     LastSeen = DateTime.UtcNow,
                     Quality = DataQuality.GOOD,
                     IsActive = true
