@@ -39,7 +39,8 @@ var activeSensors = sensors.Take(5)
                            .Select(x => x.SensorId)
                            .ToHashSet();
 var random = new Random();
-var messageIds = sensors.ToDictionary(x => x.SensorId, _ => 0L);
+var baseTicks = DateTime.UtcNow.Ticks;
+var messageIds = sensors.ToDictionary(x => x.SensorId, _ => baseTicks);
 var blockedUntil = new Dictionary<string, DateTime>();
 
 var keysDir = Path.Combine(AppContext.BaseDirectory, "keys");
@@ -112,12 +113,13 @@ SensorReadingRequest BuildSignedRequest(
     Dictionary<string, long> messageIds)
 {
     var encrypted = EncryptPayload(sensor, m, serverPublicKey);
+    messageIds[sensor.SensorId] = Interlocked.Increment(ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(messageIds, sensor.SensorId, out _));
 
     var request = new SensorReadingRequest
     {
         SensorId = sensor.SensorId,
         TimestampUtc = DateTime.UtcNow,
-        MessageId = ++messageIds[sensor.SensorId],
+        MessageId = messageIds[sensor.SensorId],
         EncryptedPayload = encrypted.Payload,
         EncryptedKey = encrypted.Key,
         Iv = encrypted.Iv,
